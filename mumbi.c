@@ -30,15 +30,15 @@
 /* Do you speak power socket?
  *
  * A data packet consists of 34 bits, a complete transmission repeats the data 8 times.
- * A short pulse/pause takes 330ms, a long pulse/pause takes three times as long, 990ms.
+ * A short pulse/pause (smallest time unit) takes 330ms, a long pulse/pause takes three times as long (990ms).
  *
- * To transmit one bit of information it takes 4 units of time:
+ * To transmit one bit of information it takes exactly 4 units of time:
  * A 0 consists of a short pulse followed by a long pause: |‾|___
  * A 1 consists of a long pulse followed by short pause:   |‾‾‾|_
  *
  * Example:
  * |‾‾‾|_ |‾‾‾|_ |‾|___ <and so on>
- *  0      0      1
+ *  1      1      0
  *
  * A complete data packet looks like this:
  *
@@ -46,13 +46,13 @@
  *  01110010 01111110 00001111 00111101 (00)
  *    0x72     0x7E     0x0F     0x3D
  *
- * Channel B Off:
+ * Channel A Off:
  *  01110010 01111110 00001110 00111100 (00)
  *    0x72     0x7E     0x0E     0x3C
  *
  * The first two bytes seem to be the "unique" house code, whilst the third and forth byte
  * seem to somehow encode the device identifier as well as the desired switch position.
- * How? Don’t know. Yet? ;_;
+ * How? Don’t know. Yet!? ;_;
  *
  * Other interesting findings:
  * The programmable power sockets seem to be capable of remembering more than one code.
@@ -60,14 +60,33 @@
 
 /*
  * Because we’re running a non-ROS with many delays we have to tweak the pulse length.
- * Feel free to modify the base value, depending on your platform. :-)
+ * Feel free to modify the base value, depending on your platform, use logic analyzer if needed. :-)
  */
-#define TIME_UNIT 235000
+#define TIME_UNIT 235000 // works fine on my BeagleBone Black
 
 const struct timespec short_pulse = {0, 1 * TIME_UNIT};
 const struct timespec long_pulse = {0, 3 * TIME_UNIT};
 const struct timespec long_pause = {0, 29 * TIME_UNIT};
 
+
+/*
+ * Commands:
+ *
+ * 0: Channel A: On
+ * 1: Channel A: Off
+ *
+ * 2: Channel B: On
+ * 3: Channel B: Off
+ *
+ * 4: Channel C: On
+ * 5: Channel C: Off
+ *
+ * 6: Channel D: On
+ * 7: Channel D: Off
+ *
+ * 8: Every Channel: On
+ * 9: Every Channel: Off
+ */
 const uint8_t data_packets[10][34] = {
         {0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0},
         {0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0},
