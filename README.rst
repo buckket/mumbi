@@ -10,7 +10,7 @@ embedded Linux platform with GPIOs like a BeagleBone Black or Raspberry Pi.
 
 This repo includes a simple command line app as well as Python extension to control such devices.
 
-Check out `src/mumbi.c` for some information about the protocol and how this works.
+Check out ``src/mumbi.c`` for some information about the protocol and how this works.
 
 Requirements
 ------------
