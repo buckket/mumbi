@@ -13,19 +13,7 @@
  * GNU General Public License for more details.
  */
 
-#include <stdio.h>
-#include <unistd.h>
-#include <errno.h>
-#include <signal.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <time.h>
-
-#include <mraa.h>
-
-
-#define DEFAULT_IOPIN 8
-
+#include "mumbi.h"
 
 /* Do you speak power socket?
  *
@@ -68,36 +56,26 @@ const struct timespec short_pulse = {0, 1 * TIME_UNIT};
 const struct timespec long_pulse = {0, 3 * TIME_UNIT};
 const struct timespec long_pause = {0, 29 * TIME_UNIT};
 
-
-/*
- * Commands:
- *
- * 0: Channel A: On
- * 1: Channel A: Off
- *
- * 2: Channel B: On
- * 3: Channel B: Off
- *
- * 4: Channel C: On
- * 5: Channel C: Off
- *
- * 6: Channel D: On
- * 7: Channel D: Off
- *
- * 8: Every Channel: On
- * 9: Every Channel: Off
- */
 const uint8_t data_packets[10][34] = {
-        {0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0},
+        // Channel A On/Off:
         {0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0},
-        {0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0},
+        {0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0},
+
+        // Channel B On/Off:
         {0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0},
-        {0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0},
+        {0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0},
+
+        // Channel C On/Off:
         {0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0},
-        {0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0},
+        {0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0},
+
+        // Channel D On/Off:
         {0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0},
-        {0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0},
+        {0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0},
+
+        // All Channels On/Off:
         {0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0},
+        {0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0},
 };
 
 void send_0(mraa_gpio_context gpio) {
@@ -120,52 +98,90 @@ void send_sync(mraa_gpio_context gpio) {
     nanosleep(&long_pause, NULL);
 }
 
-int main(int argc, char **argv) {
+int transmit(uint8_t data_pin, uint8_t power_pin, uint8_t channel, uint8_t status) {
     mraa_result_t r = MRAA_SUCCESS;
-    uint8_t iopin = DEFAULT_IOPIN;
-    uint8_t command = 0;
-
-    if (argc < 2) {
-        printf("Usage: %s COMMAND [IOPIN]\n", argv[0]);
-        exit(1);
-    }
-    if (argc >= 3) {
-        iopin = strtol(argv[2], NULL, 10);
-    }
-    if (argc >= 2) {
-        command = strtol(argv[1], NULL, 10);
-    }
 
     mraa_init();
-    mraa_gpio_context gpio;
+    mraa_gpio_context gpio_d, gpio_p;
 
-    gpio = mraa_gpio_init(iopin);
-    if (gpio == NULL) {
-        fprintf(stderr, "Are you sure that Pin%d you requested is valid on your platform?", iopin);
-        exit(1);
+    gpio_d = mraa_gpio_init(data_pin);
+    if (gpio_d == NULL) {
+        fprintf(stderr, "Are you sure that Pin%d you requested is valid on your platform?", data_pin);
+        return -1;
     }
 
-    r = mraa_gpio_dir(gpio, MRAA_GPIO_OUT);
+    gpio_p = mraa_gpio_init(power_pin);
+    if (gpio_p == NULL) {
+        fprintf(stderr, "Are you sure that Pin%d you requested is valid on your platform?", power_pin);
+        return -1;
+    }
+
+    r = mraa_gpio_dir(gpio_d, MRAA_GPIO_OUT);
     if (r != MRAA_SUCCESS) {
         mraa_result_print(r);
-        exit(1);
+        return r;
     }
 
-    for (int i = 0; i < 8; i++) {
-        for (int pos = 0; pos < sizeof(data_packets[command]) / sizeof(uint8_t); pos++) {
-            if (data_packets[command][pos]) {
-                send_1(gpio);
+    r = mraa_gpio_dir(gpio_p, MRAA_GPIO_OUT);
+    if (r != MRAA_SUCCESS) {
+        mraa_result_print(r);
+        return r;
+    }
+
+    mraa_gpio_write(gpio_p, 1);
+
+    uint8_t i, pos;
+    for (i = 0; i < 8; i++) {
+        for (pos = 0; pos < sizeof(data_packets[(2 * channel) + status]) / sizeof(uint8_t); pos++) {
+            if (data_packets[(2 * channel) + status][pos]) {
+                send_1(gpio_d);
             } else {
-                send_0(gpio);
+                send_0(gpio_d);
             }
         }
-        send_sync(gpio);
+        send_sync(gpio_d);
     }
 
-    r = mraa_gpio_close(gpio);
+    mraa_gpio_write(gpio_p, 0);
+
+    r = mraa_gpio_close(gpio_d);
     if (r != MRAA_SUCCESS) {
         mraa_result_print(r);
+        return r;
     }
 
-    return r;
+    r = mraa_gpio_close(gpio_p);
+    if (r != MRAA_SUCCESS) {
+        mraa_result_print(r);
+        return r;
+    }
+
+    return 0;
+}
+
+int main(int argc, char **argv) {
+    uint8_t data_pin = DEFAULT_DATA_PIN;
+    uint8_t power_pin = DEFAULT_POWER_PIN;
+    uint8_t channel, status;
+
+    if (argc < 3) {
+        printf("Usage: %s CHANNEL STATUS [DATAPIN] [POWERPIN]\n", argv[0]);
+        exit(1);
+    }
+    if (argc >= 5) {
+        power_pin = strtol(argv[4], NULL, 10);
+    }
+    if (argc >= 4) {
+        data_pin = strtol(argv[3], NULL, 10);
+    }
+    if (argc >= 3) {
+        channel = strtol(argv[1], NULL, 10);
+        status = strtol(argv[2], NULL, 10);
+    }
+
+    if (transmit(data_pin, power_pin, channel, status) != 0) {
+        return -1;
+    } else {
+        return 0;
+    };
 }
